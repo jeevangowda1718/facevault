@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Face — FaceVault</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body class="register-page">
+    <div class="scanline"></div>
+    <div class="noise"></div>
+
+    <header>
+        <a href="/" class="back-btn">← Back</a>
+        <div class="logo">
+            <span class="logo-icon">◈</span>
+            <span class="logo-text">FaceVault</span>
+        </div>
+        <div class="header-right"></div>
+    </header>
+
+    <main class="cam-main">
+        <div class="page-header">
+            <h2>Register <span class="accent">Identity</span></h2>
+            <p>Position your face clearly in the frame, enter your name, then capture.</p>
+        </div>
+
+        <div class="cam-layout">
+            <div class="cam-wrapper">
+                <div class="cam-frame" id="cam-frame">
+                    <div class="cam-placeholder" id="cam-placeholder">
+                        <div class="placeholder-icon">⊡</div>
+                        <p>Camera inactive</p>
+                        <small>Enter your name and click Start Camera</small>
+                    </div>
+                    <img id="video-feed" src="" alt="Camera Feed" style="display:none;">
+                    <div class="cam-overlay">
+                        <div class="corner tl"></div>
+                        <div class="corner tr"></div>
+                        <div class="corner bl"></div>
+                        <div class="corner br"></div>
+                        <div class="scan-line" id="scan-line" style="display:none;"></div>
+                    </div>
+                    <div class="frame-counter" id="frame-counter" style="display:none;">
+                        <span id="frame-count">0</span>/15 frames
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls-panel">
+                <div class="input-group">
+                    <label for="name-input">Full Name</label>
+                    <input type="text" id="name-input" placeholder="e.g. John Doe" autocomplete="off" maxlength="50">
+                    <div class="input-hint">This name will appear during recognition</div>
+                </div>
+
+                <div class="btn-stack">
+                    <button id="start-btn" class="btn btn-start" onclick="startCamera()">
+                        <span class="btn-icon">▶</span>
+                        Start Camera
+                    </button>
+                    <button id="capture-btn" class="btn btn-capture" onclick="captureFrames()" disabled>
+                        <span class="btn-icon">◉</span>
+                        Capture Face
+                    </button>
+                    <button id="stop-btn" class="btn btn-stop" onclick="stopCamera()" style="display:none;">
+                        <span class="btn-icon">■</span>
+                        Stop Camera
+                    </button>
+                </div>
+
+                <div class="progress-section" id="progress-section" style="display:none;">
+                    <div class="progress-label">Capturing encodings...</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+
+                <div class="result-box" id="result-box" style="display:none;">
+                    <div class="result-icon" id="result-icon"></div>
+                    <div class="result-text" id="result-text"></div>
+                </div>
+
+                <div class="tips-box">
+                    <h4>Tips for best results</h4>
+                    <ul>
+                        <li>Good lighting on your face</li>
+                        <li>Look directly at camera</li>
+                        <li>Remove glasses if possible</li>
+                        <li>Keep still during capture</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        let cameraActive = false;
+        let capturing = false;
+
+        function startCamera() {
+            const name = document.getElementById('name-input').value.trim();
+            if (!name) {
+                showResult(false, 'Please enter your name first');
+                document.getElementById('name-input').focus();
+                return;
+            }
+            cameraActive = true;
+            const feed = document.getElementById('video-feed');
+            const placeholder = document.getElementById('cam-placeholder');
+            feed.src = '/video_feed/register?' + Date.now();
+            feed.style.display = 'block';
+            placeholder.style.display = 'none';
+            document.getElementById('scan-line').style.display = 'block';
+            document.getElementById('capture-btn').disabled = false;
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('stop-btn').style.display = 'flex';
+        }
+
+        function stopCamera() {
+            fetch('/stop_camera/register', { method: 'POST' });
+            cameraActive = false;
+            const feed = document.getElementById('video-feed');
+            feed.src = '';
+            feed.style.display = 'none';
+            document.getElementById('cam-placeholder').style.display = 'flex';
+            document.getElementById('scan-line').style.display = 'none';
+            document.getElementById('capture-btn').disabled = true;
+            document.getElementById('start-btn').style.display = 'flex';
+            document.getElementById('stop-btn').style.display = 'none';
+        }
+
+        async function captureFrames() {
+            if (capturing) return;
+            const name = document.getElementById('name-input').value.trim();
+            if (!name) { showResult(false, 'Enter a name first'); return; }
+
+            capturing = true;
+            document.getElementById('capture-btn').disabled = true;
+            document.getElementById('progress-section').style.display = 'block';
+            document.getElementById('result-box').style.display = 'none';
+
+            // Animate progress
+            const fill = document.getElementById('progress-fill');
+            let prog = 0;
+            const interval = setInterval(() => {
+                prog = Math.min(prog + 3, 90);
+                fill.style.width = prog + '%';
+            }, 120);
+
+            try {
+                const res = await fetch('/save_face', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                const data = await res.json();
+                clearInterval(interval);
+                fill.style.width = '100%';
+                setTimeout(() => {
+                    document.getElementById('progress-section').style.display = 'none';
+                    showResult(data.success, data.message);
+                    capturing = false;
+                    document.getElementById('capture-btn').disabled = false;
+                    if (data.success) fill.style.width = '0%';
+                }, 400);
+            } catch (e) {
+                clearInterval(interval);
+                showResult(false, 'Connection error. Please try again.');
+                capturing = false;
+                document.getElementById('capture-btn').disabled = false;
+            }
+        }
+
+        function showResult(success, message) {
+            const box = document.getElementById('result-box');
+            const icon = document.getElementById('result-icon');
+            const text = document.getElementById('result-text');
+            box.style.display = 'flex';
+            box.className = 'result-box ' + (success ? 'success' : 'error');
+            icon.textContent = success ? '✓' : '✕';
+            text.textContent = message;
+        }
+    </script>
+</body>
+</html>

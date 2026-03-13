@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recognition — FaceVault</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body class="detect-page">
+    <div class="scanline"></div>
+    <div class="noise"></div>
+
+    <header>
+        <a href="/" class="back-btn">← Back</a>
+        <div class="logo">
+            <span class="logo-icon">◈</span>
+            <span class="logo-text">FaceVault</span>
+        </div>
+        <div class="header-right">
+            <div class="live-indicator" id="live-indicator" style="display:none;">
+                <span class="live-dot"></span> LIVE
+            </div>
+        </div>
+    </header>
+
+    <main class="cam-main detect-main">
+        <div class="page-header">
+            <h2>Face <span class="accent">Recognition</span></h2>
+            <p>Real-time identification using stored face encodings.</p>
+        </div>
+
+        <div class="detect-layout">
+            <div class="cam-wrapper wide">
+                <div class="cam-frame" id="cam-frame">
+                    <div class="cam-placeholder" id="cam-placeholder">
+                        <div class="placeholder-icon">◎</div>
+                        <p>Recognition Inactive</p>
+                        <small>Click "Start Recognition" to begin</small>
+                    </div>
+                    <img id="video-feed" src="" alt="Camera Feed" style="display:none;">
+                    <div class="cam-overlay">
+                        <div class="corner tl"></div>
+                        <div class="corner tr"></div>
+                        <div class="corner bl"></div>
+                        <div class="corner br"></div>
+                    </div>
+                    <div class="detect-status" id="detect-status" style="display:none;">
+                        <span class="status-dot-sm"></span>
+                        Scanning for faces...
+                    </div>
+                </div>
+
+                <div class="detect-controls">
+                    <button id="start-btn" class="btn btn-start" onclick="startDetection()">
+                        <span class="btn-icon">▶</span>
+                        Start Recognition
+                    </button>
+                    <button id="stop-btn" class="btn btn-stop" onclick="stopDetection()" style="display:none;">
+                        <span class="btn-icon">■</span>
+                        Stop
+                    </button>
+                    <a href="/register" class="btn btn-outline">
+                        <span class="btn-icon">⊕</span>
+                        Register New Face
+                    </a>
+                </div>
+            </div>
+
+            <div class="info-panel">
+                <div class="info-card">
+                    <h4>Registered Identities</h4>
+                    <div id="identity-list" class="identity-list">
+                        <div class="loading-text">Loading...</div>
+                    </div>
+                </div>
+                <div class="info-card">
+                    <h4>How It Works</h4>
+                    <ol class="how-list">
+                        <li>Camera captures live frames</li>
+                        <li>Face locations are detected</li>
+                        <li>128-point encodings generated</li>
+                        <li>Compared against stored vault</li>
+                        <li>Name displayed if matched</li>
+                    </ol>
+                </div>
+                <div class="info-card warning-card" id="no-faces-warning" style="display:none;">
+                    <h4>⚠ No Faces Registered</h4>
+                    <p>You haven't registered any faces yet. Recognition will only show "Unknown".</p>
+                    <a href="/register" class="btn btn-outline small">Register Now →</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        let cameraActive = false;
+
+        function startDetection() {
+            cameraActive = true;
+            const feed = document.getElementById('video-feed');
+            feed.src = '/video_feed/detect?' + Date.now();
+            feed.style.display = 'block';
+            document.getElementById('cam-placeholder').style.display = 'none';
+            document.getElementById('detect-status').style.display = 'flex';
+            document.getElementById('live-indicator').style.display = 'flex';
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('stop-btn').style.display = 'flex';
+        }
+
+        function stopDetection() {
+            fetch('/stop_camera/detect', { method: 'POST' });
+            cameraActive = false;
+            const feed = document.getElementById('video-feed');
+            feed.src = '';
+            feed.style.display = 'none';
+            document.getElementById('cam-placeholder').style.display = 'flex';
+            document.getElementById('detect-status').style.display = 'none';
+            document.getElementById('live-indicator').style.display = 'none';
+            document.getElementById('start-btn').style.display = 'flex';
+            document.getElementById('stop-btn').style.display = 'none';
+        }
+
+        // Load registered identities
+        fetch('/get_registered')
+            .then(r => r.json())
+            .then(data => {
+                const list = document.getElementById('identity-list');
+                if (data.count === 0) {
+                    list.innerHTML = '<div class="empty-text">No identities registered</div>';
+                    document.getElementById('no-faces-warning').style.display = 'block';
+                } else {
+                    list.innerHTML = data.names.map(n =>
+                        `<div class="identity-item">
+                            <span class="id-icon">◈</span>
+                            <span>${n}</span>
+                            <button class="delete-btn" onclick="deleteFace('${n}')">✕</button>
+                        </div>`
+                    ).join('');
+                }
+            });
+
+        async function deleteFace(name) {
+            if (!confirm(`Remove ${name} from the vault?`)) return;
+            await fetch('/delete_face', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            location.reload();
+        }
+    </script>
+</body>
+</html>

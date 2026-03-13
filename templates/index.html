@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FaceVault — Recognition System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body class="home-page">
+    <div class="scanline"></div>
+    <div class="noise"></div>
+
+    <header>
+        <div class="logo">
+            <span class="logo-icon">◈</span>
+            <span class="logo-text">FaceVault</span>
+        </div>
+        <div class="status-bar">
+            <span class="status-dot"></span>
+            <span id="registered-count">Loading...</span>
+        </div>
+    </header>
+
+    <main class="home-main">
+        <div class="hero">
+            <div class="hero-visual">
+                <div class="face-grid">
+                    <div class="grid-node"></div>
+                    <div class="grid-node"></div>
+                    <div class="grid-node"></div>
+                    <div class="grid-node"></div>
+                    <div class="grid-node"></div>
+                    <div class="grid-node"></div>
+                    <div class="grid-node"></div>
+                    <div class="grid-node"></div>
+                    <div class="grid-node"></div>
+                </div>
+                <div class="face-outline">
+                    <svg viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+                        <ellipse cx="100" cy="100" rx="70" ry="85" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+                        <circle cx="75" cy="88" r="10" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                        <circle cx="125" cy="88" r="10" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M 80 125 Q 100 140 120 125" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        <line x1="100" y1="15" x2="100" y2="30" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+                        <line x1="30" y1="100" x2="15" y2="100" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+                        <line x1="170" y1="100" x2="185" y2="100" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+                        <rect x="85" y="5" width="30" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+                        <rect x="5" y="95" width="8" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+                        <rect x="187" y="95" width="8" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+                        <circle cx="75" cy="88" r="4" fill="currentColor" opacity="0.6" class="eye-pupil"/>
+                        <circle cx="125" cy="88" r="4" fill="currentColor" opacity="0.6" class="eye-pupil"/>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="hero-content">
+                <h1 class="hero-title">
+                    <span class="title-line">Real-Time</span>
+                    <span class="title-line accent">Face Recognition</span>
+                </h1>
+                <p class="hero-desc">Register your face once. Be recognized everywhere. Powered by deep learning encodings stored locally — no cloud, no compromise.</p>
+
+                <div class="action-cards">
+                    <a href="/register" class="action-card primary">
+                        <div class="card-icon">⊕</div>
+                        <div class="card-content">
+                            <h3>Register Face</h3>
+                            <p>Add your face to the vault</p>
+                        </div>
+                        <div class="card-arrow">→</div>
+                    </a>
+                    <a href="/detect" class="action-card secondary">
+                        <div class="card-icon">◎</div>
+                        <div class="card-content">
+                            <h3>Start Recognition</h3>
+                            <p>Identify faces in real-time</p>
+                        </div>
+                        <div class="card-arrow">→</div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="registered-section" id="registered-section" style="display:none">
+            <h3 class="section-title">Registered Identities</h3>
+            <div class="names-grid" id="names-grid"></div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        fetch('/get_registered')
+            .then(r => r.json())
+            .then(data => {
+                const countEl = document.getElementById('registered-count');
+                countEl.textContent = `${data.count} identity${data.count !== 1 ? 'ies' : 'y'} registered`;
+                if (data.count > 0) {
+                    document.getElementById('registered-section').style.display = 'block';
+                    const grid = document.getElementById('names-grid');
+                    data.names.forEach(name => {
+                        const chip = document.createElement('div');
+                        chip.className = 'name-chip';
+                        chip.innerHTML = `<span class="chip-icon">◈</span> ${name}`;
+                        grid.appendChild(chip);
+                    });
+                }
+            });
+    </script>
+</body>
+</html>
